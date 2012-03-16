@@ -1065,7 +1065,8 @@ class UnitOfWork implements PropertyChangedListener
     public function addToIdentityMap($entity)
     {
         $classMetadata = $this->em->getClassMetadata(get_class($entity));
-        $idHash = implode(' ', $this->entityIdentifiers[spl_object_hash($entity)]);
+
+        $idHash = $this->getIdHash($this->entityIdentifiers[spl_object_hash($entity)]);
         if ($idHash === '') {
             throw new InvalidArgumentException("The given entity has no identity.");
         }
@@ -1163,7 +1164,7 @@ class UnitOfWork implements PropertyChangedListener
     {
         $oid = spl_object_hash($entity);
         $classMetadata = $this->em->getClassMetadata(get_class($entity));
-        $idHash = implode(' ', $this->entityIdentifiers[$oid]);
+        $idHash = $this->getIdHash($this->entityIdentifiers[$oid]);
         if ($idHash === '') {
             throw new InvalidArgumentException("The given entity has no identity.");
         }
@@ -1220,7 +1221,7 @@ class UnitOfWork implements PropertyChangedListener
             return false;
         }
         $classMetadata = $this->em->getClassMetadata(get_class($entity));
-        $idHash = implode(' ', $this->entityIdentifiers[$oid]);
+        $idHash = $this->getIdHash($this->entityIdentifiers[$oid]);
         if ($idHash === '') {
             return false;
         }
@@ -1941,7 +1942,7 @@ class UnitOfWork implements PropertyChangedListener
                     $id[$fieldName] = $data[$fieldName];
                 }
             }
-            $idHash = implode(' ', $id);
+            $idHash = $this->getIdHash($id);
         } else {
             if (isset($class->associationMappings[$class->identifier[0]])) {
                 $idHash = $data[$class->associationMappings[$class->identifier[0]]['joinColumns'][0]['name']];
@@ -2032,7 +2033,7 @@ class UnitOfWork implements PropertyChangedListener
                                 // Check identity map first
                                 // FIXME: Can break easily with composite keys if join column values are in
                                 //        wrong order. The correct order is the one in ClassMetadata#identifier.
-                                $relatedIdHash = implode(' ', $associatedId);
+                                $relatedIdHash = $this->getIdHash($associatedId);
                                 if (isset($this->identityMap[$targetClass->rootEntityName][$relatedIdHash])) {
                                     $newValue = $this->identityMap[$targetClass->rootEntityName][$relatedIdHash];
 
@@ -2120,6 +2121,18 @@ class UnitOfWork implements PropertyChangedListener
         }
 
         return $entity;
+    }
+
+    protected function getIdHash($identifiers)
+    {
+        $stringIdentifiers = array_map(
+            function ($identifier) {
+                return is_object($identifier) ? spl_object_hash($identifier) : $identifier;
+            },
+            $identifiers
+        );
+
+        return implode(' ', $stringIdentifiers);
     }
 
     /**
@@ -2239,7 +2252,7 @@ class UnitOfWork implements PropertyChangedListener
      */
     public function tryGetById($id, $rootClassName)
     {
-        $idHash = implode(' ', (array) $id);
+        $idHash = $this->getIdHash((array) $id);
         if (isset($this->identityMap[$rootClassName][$idHash])) {
             return $this->identityMap[$rootClassName][$idHash];
         }
